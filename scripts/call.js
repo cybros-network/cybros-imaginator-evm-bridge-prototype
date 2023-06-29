@@ -23,10 +23,13 @@ const parsedArgs = minimist(process.argv.slice(2), {
   string: [
     "target",
     "function",
+    "args",
+    "value",
   ],
   default: {
     dryRun: false,
     compile: standalone,
+    value: "0"
   },
 });
 
@@ -46,16 +49,24 @@ async function main() {
     await hre.run("compile");
   }
 
-  const contract = await hre.ethers.getContractAt("Lock", contractAddress);
+  const contract = await hre.ethers.getContractAt("CybrosImaginatorBridge", contractAddress);
   const callee = contract.getFunction(contractFunction);
-  const callArgs = parsedArgs["--"]
+  const value = hre.ethers.parseEther(parsedArgs.value);
+  const callArgs = parsedArgs.args ? JSON.parse(parsedArgs.args) : undefined;
+  const callOverrides = (() => {
+    let overrides = {};
+    if (value > 0) {
+      overrides = {...overrides, value};
+    }
+    return overrides;
+  })();
   
   if (parsedArgs.dryRun) {
     const pendingTx = await (async () => {
-      if (callArgs.length > 0) {
-        return await callee.populateTransaction(callArgs)
+      if (callArgs) {
+        return await callee.populateTransaction(...callArgs, {value});
       } else {
-        return await callee.populateTransaction()
+        return await callee.populateTransaction(callOverrides);
       }
     })();
     console.log(pendingTx);
@@ -65,10 +76,10 @@ async function main() {
   }
 
   const tx = await (async () => {
-    if (callArgs.length > 0) {
-      return await callee.send(callArgs)
+    if (callArgs) {
+      return await callee.send(...callArgs, callOverrides);
     } else {
-      return await callee.send()
+      return await callee.send(callOverrides);
     }
   })();
 

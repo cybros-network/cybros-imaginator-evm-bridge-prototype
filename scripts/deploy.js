@@ -30,26 +30,17 @@ async function main() {
     await hre.run("compile");
   }
 
-  const currentTimestampInSeconds = Math.round(Date.now() / 1000);
-  const unlockTime = currentTimestampInSeconds + 60;
-
-  const lockedAmount = hre.ethers.parseEther("0.001");
-
   if (parsedArgs.dryRun) {
     console.log("Dry run mode, the contract won't actual deploy to the network");
     process.exit(0);
   }
 
-  const lock = await hre.ethers.deployContract("Lock", [unlockTime], {
-    value: lockedAmount,
-  });
+  const contract = await hre.ethers.deployContract("CybrosImaginatorBridge");
 
-  await lock.waitForDeployment();
+  await contract.waitForDeployment();
 
   console.log(
-    `Lock with ${hre.ethers.formatEther(
-      lockedAmount
-    )}ETH and unlock timestamp ${unlockTime} deployed to ${lock.target}`
+    `Contract deployed to ${contract.target}`
   );
 }
 
