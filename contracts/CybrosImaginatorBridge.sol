@@ -30,11 +30,11 @@ contract CybrosImaginatorBridge {
         emit PromptRequested(msg.sender, msg.value, _prompt, true);
     }
 
-    function request(string memory input) public payable {
+    function request(string memory _input) public payable {
         require(msg.value >= minAmount, "Amount is less than the minimum required");
 
         // 触发 PromptRequested 事件
-        emit PromptRequested(msg.sender, msg.value, input, false);
+        emit PromptRequested(msg.sender, msg.value, _input, false);
     }
 
     // 取出合约内的所有以太币，只有管理员可以调用
