@@ -10,6 +10,10 @@ npx hardhat node
 npx hardhat run scripts/deploy.js
 ```
 
-## LICENSE
+## Notes
+
+- https://mumbaifaucet.com/
+
+## License
 
 MIT License
