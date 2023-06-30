@@ -6,8 +6,6 @@ if (standalone) {
 const hre = require("hardhat");
 const minimist = require("minimist");
 
-hre.network
-
 const parsedArgs = minimist(process.argv.slice(2), {
   alias: {
     "dryRun": "dry",
