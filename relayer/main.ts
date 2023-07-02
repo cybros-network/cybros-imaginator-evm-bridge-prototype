@@ -5,7 +5,8 @@ import { sleep } from "https://deno.land/x/sleep/mod.ts";
 import { Contract, InfuraProvider, EventLog } from "npm:ethers"
 
 import { ApiPromise, HttpProvider, Keyring, WsProvider } from "https://deno.land/x/polkadot/api/mod.ts"
-import { cryptoWaitReady } from "https://deno.land/x/polkadot/util-crypto/mod.ts"
+import { cryptoWaitReady, encodeAddress, blake2AsU8a, secp256k1Compress } from "https://deno.land/x/polkadot/util-crypto/mod.ts"
+import { hexToU8a } from "https://deno.land/x/polkadot/util/mod.ts"
 
 import { SubmittableExtrinsic } from "https://deno.land/x/polkadot/api/submittable/types.ts";
 import { ISubmittableResult } from "https://deno.land/x/polkadot/types/types/extrinsic.ts";
@@ -38,7 +39,7 @@ const dryRun = parsedArgs.dryRun
 const evmChainProvider = new InfuraProvider(env.INFURA_NETWORK, env.INFURA_API_KEY)
 
 const bridgeContractABI = [
-	"event PromptRequested(address indexed sender, uint256 fee, string input, bool simple)"
+	"event PromptRequested(address indexed sender, uint256 fee, string input, bytes publicKey, bool simple)"
 ];
 const contract = new Contract(env.EVM_BRIDGE_CONTRACT_ADDRESS, bridgeContractABI, evmChainProvider)
 
@@ -146,22 +147,48 @@ do {
 			api.tx.utility.forceBatch(
 				slicedEvents.map(
 					(event: EventLog) => {
-						const simple = event.args[3]
-						if (!simple) {
-							console.info("Only support simple prompt now")
-							return []
-						}
-
 						const prompt = event.args[2].toString().trim()
 						if (prompt.length === 0) {
+							console.info("Prompt is blank, skip")
 							return []
 						}
 
-						const input = {e2e: false, data: prompt}
+						const simple = event.args[4]
+						if (simple) {
+							console.log(`Sender: Unknown Prompt: ${prompt}`)
 
-						return [
-							api.tx.offchainComputing.createJob(jobPoolId, jobPolicyId, jobSpecVersion, JSON.stringify(input), null),
-						]
+							const input = {e2e: false, data: prompt}
+							return [
+								api.tx.offchainComputing.createJob(jobPoolId, jobPolicyId, jobSpecVersion, false, JSON.stringify(input), null),
+							]
+						} else {
+							let senderPublicKey = event.args[3].toString().trim()
+							if (senderPublicKey.length === 0 || senderPublicKey === "0x") {
+								console.info("Public key is blank, skip")
+								return []
+							}
+							if (senderPublicKey.length === 130) {
+								senderPublicKey = `0x04${senderPublicKey.substring(2)}`
+							}
+
+							try {
+								const subAddressFromPublicKey = encodeAddress(blake2AsU8a(secp256k1Compress(hexToU8a(senderPublicKey))), 42)
+								console.log(`Sender: ${subAddressFromPublicKey} Prompt: ${prompt}`)
+								
+								const parsedPrompt = JSON.parse(prompt)
+								if (!parsedPrompt.data || parsedPrompt.data.toString().trim().length === 0) {
+									console.info("Invalid prompt, skip")
+									return []
+								}
+								
+								return [
+									api.tx.offchainComputing.createJobFor(subAddressFromPublicKey, jobPoolId, jobPolicyId, jobSpecVersion, false, prompt, null),
+								]
+							} catch (e) {
+								console.info(`Invalid input ${e.message}`)
+								return []
+							}
+						}
 					}
 				).flat()
 			)
@@ -179,7 +206,9 @@ do {
 	}
 
 	startBlock = highestBlockNumber + 1
-	Deno.writeTextFileSync(savedBlockNumberFilePath, (highestBlockNumber + 1).toString())
+	if (!dryRun) {
+		Deno.writeTextFileSync(savedBlockNumberFilePath, (highestBlockNumber + 1).toString())
+	}
 
 	await sleep(4)
 } while (true);

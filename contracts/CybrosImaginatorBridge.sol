@@ -9,7 +9,7 @@ contract CybrosImaginatorBridge {
     uint256 public minAmount = 0.02 ether;
 
     // 用于通知转账成功接收的 event
-    event PromptRequested(address indexed sender, uint256 fee, string input, bool simple);
+    event PromptRequested(address indexed sender, uint256 fee, string input, bytes publicKey, bool simple);
 
     // 构造函数，将合约发布者设置为管理员
     constructor() {
@@ -27,14 +27,19 @@ contract CybrosImaginatorBridge {
         require(msg.value >= minAmount, "Amount is less than the minimum required");
 
         // 触发 PromptRequested 事件
-        emit PromptRequested(msg.sender, msg.value, _prompt, true);
+        emit PromptRequested(msg.sender, msg.value, _prompt, "", true);
     }
 
-    function request(string memory _input) public payable {
+    function request(string memory _input, uint8 _v, bytes32 _r, bytes32 _s, bytes memory _publicKey) public payable {
         require(msg.value >= minAmount, "Amount is less than the minimum required");
+        require(msg.sender == address(uint160(uint256(keccak256((_publicKey))))), "Public key mismatched");
+
+        bytes32 inputHash = keccak256(abi.encodePacked(_input));
+        address signer = ecrecover(inputHash, _v, _r, _s);
+        require(signer != address(0) && signer == msg.sender, "ECDSA: invalid signature");
 
         // 触发 PromptRequested 事件
-        emit PromptRequested(msg.sender, msg.value, _input, false);
+        emit PromptRequested(msg.sender, msg.value, _input, _publicKey, false);
     }
 
     // 取出合约内的所有以太币，只有管理员可以调用
