@@ -30,11 +30,12 @@ contract CybrosImaginatorBridge {
         emit PromptRequested(msg.sender, msg.value, _prompt, "", true);
     }
 
-    function request(string memory _input, uint8 _v, bytes32 _r, bytes32 _s, bytes memory _publicKey) public payable {
+    function request(string memory _input, string memory length, uint8 _v, bytes32 _r, bytes32 _s, bytes memory _publicKey) public payable {
         require(msg.value >= minAmount, "Amount is less than the minimum required");
         require(msg.sender == address(uint160(uint256(keccak256((_publicKey))))), "Public key mismatched");
 
-        bytes32 inputHash = keccak256(abi.encodePacked(_input));
+        bytes memory prefix = bytes(string.concat("\x19Ethereum Signed Message:\n", length));
+        bytes32 inputHash = keccak256(abi.encodePacked(prefix, _input));
         address signer = ecrecover(inputHash, _v, _r, _s);
         require(signer != address(0) && signer == msg.sender, "ECDSA: invalid signature");
 
