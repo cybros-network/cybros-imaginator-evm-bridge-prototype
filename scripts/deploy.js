@@ -8,6 +8,7 @@ const minimist = require("minimist");
 
 const parsedArgs = minimist(process.argv.slice(2), {
   alias: {
+    "contract": "c",
     "dryRun": "dry",
   },
   boolean: [
@@ -15,13 +16,23 @@ const parsedArgs = minimist(process.argv.slice(2), {
     "compile",
   ],
   negatable: [
-    "compile"
+    "compile",
+  ],
+  string: [
+    "contract",
   ],
   default: {
-    dryRun: false,
     compile: standalone,
+    contract: "CybrosImaginatorBridge",
+    dryRun: false,
   },
 });
+
+const contractName = parsedArgs.contract;
+if (!contractName || contractName.trim().length === 0) {
+  console.error("`--contract` must provide.");
+  process.exit(1);
+}
 
 async function main() {
   if (parsedArgs.compile) {
@@ -33,7 +44,7 @@ async function main() {
     process.exit(0);
   }
 
-  const contract = await hre.ethers.deployContract("CybrosImaginatorBridge");
+  const contract = await hre.ethers.deployContract(contractName);
 
   await contract.waitForDeployment();
 

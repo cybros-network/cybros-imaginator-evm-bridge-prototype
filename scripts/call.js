@@ -9,6 +9,7 @@ const minimist = require("minimist");
 const parsedArgs = minimist(process.argv.slice(2), {
   "--": true,
   alias: {
+    "contract": "c",
     "dryRun": "dry",
     "target": "t",
     "function": "f",
@@ -21,18 +22,25 @@ const parsedArgs = minimist(process.argv.slice(2), {
     "compile"
   ],
   string: [
-    "target",
+    "contract",
     "function",
+    "target",
     "args",
     "value",
   ],
   default: {
-    dryRun: false,
     compile: standalone,
-    value: "0"
+    contract: "CybrosImaginatorBridge",
+    dryRun: false,
+    value: "0",
   },
 });
 
+const contractName = parsedArgs.contract;
+if (!contractName || contractName.trim().length === 0) {
+  console.error("`--contract` must provide.");
+  process.exit(1);
+}
 const contractAddress = parsedArgs.target;
 if (!contractAddress || contractAddress.trim().length === 0) {
   console.error("`--target` must provide.");
@@ -49,7 +57,7 @@ async function main() {
     await hre.run("compile");
   }
 
-  const contract = await hre.ethers.getContractAt("CybrosImaginatorBridge", contractAddress);
+  const contract = await hre.ethers.getContractAt(contractName, contractAddress);
   const callee = contract.getFunction(contractFunction);
   const value = hre.ethers.parseEther(parsedArgs.value);
   const callArgs = parsedArgs.args ? JSON.parse(parsedArgs.args) : undefined;
