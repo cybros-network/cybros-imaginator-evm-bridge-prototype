@@ -159,7 +159,7 @@ do {
 
 							const input = {e2e: false, data: prompt}
 							return [
-								api.tx.offchainComputingPool.createJob(jobPoolId, jobPolicyId, null, jobSpecVersion, false, JSON.stringify(input), null),
+								api.tx.offchainComputingPool.createJob(jobPoolId, jobPolicyId, null, null, jobSpecVersion, JSON.stringify(input), null),
 							]
 						} else {
 							let senderPublicKey = event.args[3].toString().trim()
@@ -183,7 +183,7 @@ do {
 								parsedPrompt["evmPublicKey"] = senderPublicKey;
 								
 								return [
-									api.tx.offchainComputingPool.createJobFor(subAddressFromPublicKey, jobPoolId, jobPolicyId, null, jobSpecVersion, false, JSON.stringify(parsedPrompt), null),
+									api.tx.offchainComputingPool.createJob(jobPoolId, jobPolicyId, null, subAddressFromPublicKey, jobSpecVersion, JSON.stringify(parsedPrompt), null),
 								]
 							} catch (e) {
 								console.info(`Invalid input ${e.message}`)
@@ -197,7 +197,7 @@ do {
 	})
 
 	for (const txPromise of txPromises) {
-		console.info(`Sending offchainComputingPool.createJob(poolId, policyId, uniqueTrackId, implSpecVersion, input, softExpiresIn) in batch`);
+		console.info(`Sending offchainComputingPool.createJob(poolId, policyId, uniqueTrackId, beneficiary, implSpecVersion, input, softExpiresIn)`);
 		console.info(`Call hash: ${txPromise.toHex()}`);
 
 		if (!dryRun) {
